@@ -1,0 +1,42 @@
+[
+  {
+    "label": "Top 10 states by deaths (2022)",
+    "question": "Which states had the highest number of road accident deaths in 2022? Show the top 10."
+  },
+  {
+    "label": "Most dangerous states by fatality rate",
+    "question": "Which states have the highest fatality rate (deaths per 100 accidents) in 2022?"
+  },
+  {
+    "label": "COVID impact on accidents",
+    "question": "How did COVID-19 affect road accident numbers in India between 2019 and 2023?"
+  },
+  {
+    "label": "Black spot states",
+    "question": "Which states are classified as road accident black spots and what interventions are recommended?"
+  },
+  {
+    "label": "Delhi road accidents",
+    "question": "Give me a detailed summary of road accidents in Delhi including trends over the years."
+  },
+  {
+    "label": "Best interventions to reduce deaths",
+    "question": "What are the most effective road safety interventions to reduce accident fatalities according to the Campbell review?"
+  },
+  {
+    "label": "National accident overview",
+    "question": "Give me an overview of road accident statistics across India."
+  },
+  {
+    "label": "Poisson model explanation",
+    "question": "Explain the Poisson regression model used in this project and what its predictions mean."
+  },
+  {
+    "label": "Night time accidents",
+    "question": "Which states have the highest proportion of night time road accidents?"
+  },
+  {
+    "label": "Two-wheeler safety",
+    "question": "What do the statistics say about two-wheeler accidents and what interventions help?"
+  }
+]

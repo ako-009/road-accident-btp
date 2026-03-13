@@ -1,0 +1,35 @@
+# Virtual environment - never commit this
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables - never commit API keys
+.env
+
+# Data files
+data/raw/*.csv
+data/processed/*.csv
+outputs/plots/*.png
+outputs/agent_index/
+outputs/*.csv
+models/*.pkl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test cache
+.pytest_cache/
+.coverage
+
+# Temp files
+write_ui.py
