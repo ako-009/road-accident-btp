@@ -1,298 +1,241 @@
 """
-eda.py  (Exploratory Data Analysis)
--------------------------------------
-Reads the cleaned CSV and produces 8 publication-quality plots
-plus a summary CSV. All outputs go to outputs/plots/ and outputs/.
-
-Run with:
-    python src/eda.py
+eda.py
+------
+Exploratory Data Analysis — generates all plots from cleaned iRAD data.
+Saves 11 PNG files to outputs/plots/
 """
 
 import sys
 import warnings
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import seaborn as sns
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
-sys.path.append(str(Path(__file__).parent.parent))
-from src.config import (CLEAN_CSV, PLOTS_DIR, SUMMARY_CSV,
-                        OUTPUT_DIR, ensure_dirs)
 
-# ── Global plot style ─────────────────────────────────────────────
-# Using a clean, professional style suitable for a BTP report
-sns.set_theme(style="whitegrid", font_scale=1.1)
-PALETTE   = sns.color_palette("muted", 10)
-FIG_DPI   = 150          # resolution for saved images
-TOP_N     = 10           # how many states to show in bar charts
-YEAR_SHOW = 2022         # which year to use for single-year charts
+ROOT      = Path(__file__).parent.parent
+DATA_FILE = ROOT / "data" / "processed" / "accidents_cleaned.csv"
+PLOT_DIR  = ROOT / "outputs" / "plots"
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── Style ─────────────────────────────────────────────────────────
+plt.rcParams.update({
+    "figure.facecolor": "white",
+    "axes.facecolor":   "white",
+    "axes.grid":        True,
+    "grid.alpha":       0.3,
+    "font.size":        11,
+    "axes.titlesize":   13,
+    "axes.labelsize":   11,
+})
+
+BLUE   = "#2196F3"
+RED    = "#F44336"
+GREEN  = "#4CAF50"
+ORANGE = "#FF9800"
+PURPLE = "#9C27B0"
 
 
-def load_data() -> pd.DataFrame:
-    if not CLEAN_CSV.exists():
-        raise FileNotFoundError(
-            f"Cleaned CSV not found at {CLEAN_CSV}. "
-            "Run python src/etl.py first."
-        )
-    return pd.read_csv(CLEAN_CSV)
-
-
-def save_fig(fig, name: str) -> Path:
-    """Saves figure to outputs/plots/ and closes it to free memory."""
-    path = PLOTS_DIR / name
-    fig.savefig(path, dpi=FIG_DPI, bbox_inches="tight")
+def save(fig, name):
+    path = PLOT_DIR / name
+    fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved plot -> {path.name}")
-    return path
+    print(f"  Saved plot -> {name}")
 
 
-# ── Plot 1: Top N states by total accidents ───────────────────────
-def plot_top_accidents(df: pd.DataFrame):
-    yr  = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(TOP_N, "total_accidents")
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(top["state"][::-1], top["total_accidents"][::-1],
-                   color=PALETTE[0], edgecolor="white")
-    ax.bar_label(bars, fmt="%,.0f", padding=4, fontsize=9)
-    ax.set_xlabel("Total Accidents")
-    ax.set_title(f"Top {TOP_N} States by Total Accidents ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
-    fig.tight_layout()
-    return save_fig(fig, "01_top_accidents_by_state.png")
+def fmt_num(n):
+    """Format large numbers as 12,345"""
+    return f"{int(n):,}"
 
 
-# ── Plot 2: Top N states by deaths ───────────────────────────────
-def plot_top_deaths(df: pd.DataFrame):
-    yr  = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(TOP_N, "killed")
+# ── Load data ─────────────────────────────────────────────────────
+print("=== EDA Pipeline ===")
+df = pd.read_csv(DATA_FILE)
+print(f"  Loaded {len(df)} rows for analysis")
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(top["state"][::-1], top["killed"][::-1],
-                   color=PALETTE[3], edgecolor="white")
-    ax.bar_label(bars, fmt="%,.0f", padding=4, fontsize=9)
-    ax.set_xlabel("Number of Deaths")
-    ax.set_title(f"Top {TOP_N} States by Road Accident Deaths ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
-    fig.tight_layout()
-    return save_fig(fig, "02_top_deaths_by_state.png")
+df2022 = df[df["year"] == 2022].copy()
+df2023 = df[df["year"] == 2023].copy()
 
+# ── Plot 01: Top 10 states by total accidents ─────────────────────
+top_acc = df2022.nlargest(10, "total_accidents").sort_values("total_accidents")
+fig, ax = plt.subplots(figsize=(10, 6))
+bars = ax.barh(top_acc["state"], top_acc["total_accidents"], color=BLUE, edgecolor="white")
+for bar, val in zip(bars, top_acc["total_accidents"]):
+    ax.text(bar.get_width() + 300, bar.get_y() + bar.get_height() / 2,
+            fmt_num(val), va="center", ha="left", fontsize=9)
+ax.set_xlabel("Total Accidents")
+ax.set_title("Top 10 States by Total Accidents (2022)")
+ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+fig.tight_layout()
+save(fig, "01_top_accidents_by_state.png")
 
-# ── Plot 3: Fatality rate by state ────────────────────────────────
-def plot_fatality_rate(df: pd.DataFrame):
-    yr  = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(TOP_N, "fatality_rate")
+# ── Plot 02: Top 10 states by deaths ─────────────────────────────
+top_dead = df2022.nlargest(10, "killed").sort_values("killed")
+fig, ax = plt.subplots(figsize=(10, 6))
+bars = ax.barh(top_dead["state"], top_dead["killed"], color=RED, edgecolor="white")
+for bar, val in zip(bars, top_dead["killed"]):
+    ax.text(bar.get_width() + 100, bar.get_y() + bar.get_height() / 2,
+            fmt_num(val), va="center", ha="left", fontsize=9)
+ax.set_xlabel("Number of Deaths")
+ax.set_title("Top 10 States by Road Accident Deaths (2022)")
+ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+fig.tight_layout()
+save(fig, "02_top_deaths_by_state.png")
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(top["state"][::-1], top["fatality_rate"][::-1],
-                   color=PALETTE[1], edgecolor="white")
-    ax.bar_label(bars, fmt="%.1f%%", padding=4, fontsize=9)
-    ax.set_xlabel("Fatality Rate (Deaths per 100 Accidents)")
-    ax.set_title(f"Top {TOP_N} States by Fatality Rate ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.axvline(yr["fatality_rate"].mean(), color="red",
-               linestyle="--", linewidth=1.2, label="National average")
-    ax.legend(fontsize=9)
-    fig.tight_layout()
-    return save_fig(fig, "03_fatality_rate_by_state.png")
+# ── Plot 03: Top 10 states by fatality rate ───────────────────────
+top_fat = df2022[df2022["total_accidents"] > 100].nlargest(10, "fatality_rate").sort_values("fatality_rate")
+national_avg = df2022["fatality_rate"].mean()
+fig, ax = plt.subplots(figsize=(10, 6))
+bars = ax.barh(top_fat["state"], top_fat["fatality_rate"], color=ORANGE, edgecolor="white")
+for bar, val in zip(bars, top_fat["fatality_rate"]):
+    ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
+            f"{val:.1f}%", va="center", ha="left", fontsize=9)
+ax.axvline(national_avg, color=RED, linestyle="--", linewidth=1.5, label=f"National average ({national_avg:.1f}%)")
+ax.set_xlabel("Fatality Rate (Deaths per 100 Accidents)")
+ax.set_title("Top 10 States by Fatality Rate (2022)")
+ax.legend()
+fig.tight_layout()
+save(fig, "03_fatality_rate_by_state.png")
 
+# ── Plot 04: National yearly trend ───────────────────────────────
+trend = df.groupby("year").agg(
+    total_accidents=("total_accidents", "sum"),
+    total_killed=("killed", "sum"),
+).reset_index()
 
-# ── Plot 4: Year-over-year national trend ─────────────────────────
-def plot_yearly_trend(df: pd.DataFrame):
-    yearly = (df.groupby("year")
-               .agg(total_accidents=("total_accidents", "sum"),
-                    killed=("killed", "sum"),
-                    grievous=("grievous_injury", "sum"))
-               .reset_index())
+fig, ax1 = plt.subplots(figsize=(10, 5))
+ax2 = ax1.twinx()
+ax1.plot(trend["year"], trend["total_accidents"], "b-o", linewidth=2.5, markersize=7, label="Total Accidents")
+ax2.plot(trend["year"], trend["total_killed"], "r--s", linewidth=2.5, markersize=7, label="Deaths")
+ax1.set_xlabel("Year")
+ax1.set_ylabel("Total Accidents", color="blue")
+ax2.set_ylabel("Deaths", color="red")
+ax1.set_title("National Road Accident Trend (2019–2023)")
+ax1.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc="lower right")
+ax1.set_xticks(trend["year"])
+fig.tight_layout()
+save(fig, "04_yearly_national_trend.png")
 
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-    ax2 = ax1.twinx()
+# ── Plot 05: Accident severity breakdown (2023 data) ─────────────
+# Use 2023 data which has fatal/grievous/minor/no-injury breakdown
+sev = df2023[df2023["fatal_accidents"] > 0].nlargest(10, "total_accidents").copy()
 
-    ax1.plot(yearly["year"], yearly["total_accidents"],
-             marker="o", color=PALETTE[0], linewidth=2.2,
-             label="Total Accidents")
-    ax2.plot(yearly["year"], yearly["killed"],
-             marker="s", color=PALETTE[3], linewidth=2.2,
-             linestyle="--", label="Deaths")
+if len(sev) > 0:
+    sev = sev.set_index("state")
+    sev["fatal_pct"]    = sev["fatal_accidents"]  / sev["total_accidents"] * 100
+    sev["grievous_pct"] = sev["grievous_injury"]   / sev["total_accidents"] * 100
+    sev["minor_pct"]    = sev["minor_hosp"]        / sev["total_accidents"] * 100
+    sev["noinjury_pct"] = sev["no_injury"]         / sev["total_accidents"] * 100
 
-    ax1.set_xlabel("Year")
-    ax1.set_ylabel("Total Accidents", color=PALETTE[0])
-    ax2.set_ylabel("Deaths", color=PALETTE[3])
-    ax1.set_title("National Road Accident Trend (2019–2023)",
-                  fontweight="bold")
-    ax1.yaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
-    ax2.yaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
+    fig, ax = plt.subplots(figsize=(11, 7))
+    bottom = np.zeros(len(sev))
+    colors = [RED, ORANGE, BLUE, GREEN]
+    labels = ["Fatal", "Grievous", "Minor (Hosp.)", "No Injury"]
+    for col, color, label in zip(["fatal_pct", "grievous_pct", "minor_pct", "noinjury_pct"], colors, labels):
+        ax.barh(sev.index, sev[col], left=bottom, color=color, label=label, edgecolor="white")
+        bottom += sev[col].values
 
-    # Combine legends from both axes
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=9)
-    fig.tight_layout()
-    return save_fig(fig, "04_yearly_national_trend.png")
-
-
-# ── Plot 5: Injury severity breakdown (stacked bar) ───────────────
-def plot_severity_breakdown(df: pd.DataFrame):
-    yr = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(10, "total_accidents")[
-        ["state", "fatal_accidents", "grievous_injury",
-         "minor_hosp", "no_injury"]
-    ].set_index("state")
-
-    # Normalise to 100% so we compare proportions not raw counts
-    top_pct = top.div(top.sum(axis=1), axis=0) * 100
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    top_pct.plot(kind="barh", stacked=True, ax=ax,
-                 color=[PALETTE[3], PALETTE[1], PALETTE[0], PALETTE[4]],
-                 edgecolor="white")
     ax.set_xlabel("Percentage of Accidents (%)")
-    ax.set_title(f"Accident Severity Breakdown — Top 10 States ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.legend(["Fatal", "Grievous", "Minor (Hosp.)", "No Injury"],
-              loc="lower right", fontsize=9)
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
+    ax.set_title("Accident Severity Breakdown — Top 10 States (2023)")
+    ax.legend(loc="lower right")
+    ax.set_xlim(0, 105)
     fig.tight_layout()
-    return save_fig(fig, "05_severity_breakdown.png")
-
-
-# ── Plot 6: COVID impact — accidents before/during/after ──────────
-def plot_covid_impact(df: pd.DataFrame):
-    period = (df.groupby(["year", "period"])
-               .agg(accidents=("total_accidents", "sum"),
-                    deaths=("killed", "sum"))
-               .reset_index())
-
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-    colors = {"Pre-COVID": PALETTE[0],
-              "COVID":     PALETTE[3],
-              "Post-COVID": PALETTE[2]}
-
-    for ax, col, label in zip(axes,
-                               ["accidents", "deaths"],
-                               ["Total Accidents", "Total Deaths"]):
-        bar_colors = [colors.get(p, PALETTE[0])
-                      for p in period["period"]]
-        bars = ax.bar(period["year"].astype(str), period[col],
-                      color=bar_colors, edgecolor="white")
-        ax.bar_label(bars, fmt="%,.0f", padding=3, fontsize=8)
-        ax.set_title(f"{label} by Year", fontweight="bold")
-        ax.set_xlabel("Year")
-        ax.set_ylabel(label)
-        ax.yaxis.set_major_formatter(mticker.FuncFormatter(
-            lambda x, _: f"{int(x):,}"))
-
-    # Manual legend for COVID periods
-    from matplotlib.patches import Patch
-    legend_items = [Patch(color=v, label=k) for k, v in colors.items()]
-    axes[1].legend(handles=legend_items, fontsize=9)
-
-    fig.suptitle("Impact of COVID-19 on Road Accidents", fontweight="bold")
-    fig.tight_layout()
-    return save_fig(fig, "06_covid_impact.png")
-
-
-# ── Plot 7: Night vs day accidents ───────────────────────────────
-def plot_night_vs_day(df: pd.DataFrame):
-    yr  = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(10, "total_accidents")[
-        ["state", "total_accidents", "night_accidents"]
-    ].copy()
-    top["day_accidents"] = top["total_accidents"] - top["night_accidents"]
-
+    save(fig, "05_severity_breakdown.png")
+else:
+    # Fallback: fatality rate bar chart
     fig, ax = plt.subplots(figsize=(10, 6))
-    x     = range(len(top))
-    width = 0.4
-    ax.barh([i + width/2 for i in x], top["day_accidents"],
-            width, color=PALETTE[0], label="Day", edgecolor="white")
-    ax.barh([i - width/2 for i in x], top["night_accidents"],
-            width, color=PALETTE[5], label="Night", edgecolor="white")
-    ax.set_yticks(list(x))
-    ax.set_yticklabels(top["state"].tolist())
-    ax.set_xlabel("Number of Accidents")
-    ax.set_title(f"Day vs Night Accidents — Top 10 States ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.legend(fontsize=9)
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
+    top10 = df2022.nlargest(10, "total_accidents").sort_values("fatality_rate")
+    ax.barh(top10["state"], top10["fatality_rate"], color=ORANGE)
+    ax.set_xlabel("Fatality Rate (%)")
+    ax.set_title("Fatality Rate — Top 10 States by Accidents (2022)")
     fig.tight_layout()
-    return save_fig(fig, "07_day_vs_night.png")
+    save(fig, "05_severity_breakdown.png")
 
+# ── Plot 06: COVID impact ─────────────────────────────────────────
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+colors_covid = [BLUE if y == 2019 else RED if y in [2020, 2021] else GREEN
+                for y in trend["year"]]
 
-# ── Plot 8: National highway vs state highway accidents ───────────
-def plot_road_type(df: pd.DataFrame):
-    yr  = df[df["year"] == YEAR_SHOW]
-    top = yr.nlargest(10, "total_accidents")[
-        ["state", "nh_accidents", "sh_accidents"]
-    ].set_index("state")
+ax1.bar(trend["year"], trend["total_accidents"], color=colors_covid, edgecolor="white", width=0.6)
+for i, (y, v) in enumerate(zip(trend["year"], trend["total_accidents"])):
+    ax1.text(y, v + 3000, f"{int(v):,}", ha="center", fontsize=8)
+ax1.set_title("Total Accidents by Year")
+ax1.set_ylabel("Total Accidents")
+ax1.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    top.plot(kind="barh", ax=ax,
-             color=[PALETTE[0], PALETTE[2]], edgecolor="white")
-    ax.set_xlabel("Number of Accidents")
-    ax.set_title(f"National Highway vs State Highway Accidents ({YEAR_SHOW})",
-                 fontweight="bold")
-    ax.legend(["National Highway", "State Highway"], fontsize=9)
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(
-        lambda x, _: f"{int(x):,}"))
-    fig.tight_layout()
-    return save_fig(fig, "08_road_type_accidents.png")
+ax2.bar(trend["year"], trend["total_killed"], color=colors_covid, edgecolor="white", width=0.6)
+for i, (y, v) in enumerate(zip(trend["year"], trend["total_killed"])):
+    ax2.text(y, v + 1000, f"{int(v):,}", ha="center", fontsize=8)
+ax2.set_title("Total Deaths by Year")
+ax2.set_ylabel("Total Deaths")
+ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
+from matplotlib.patches import Patch
+legend_elements = [Patch(color=BLUE, label="Pre-COVID"),
+                   Patch(color=RED, label="COVID"),
+                   Patch(color=GREEN, label="Post-COVID")]
+fig.legend(handles=legend_elements, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.05))
+fig.suptitle("Impact of COVID-19 on Road Accidents", fontsize=14, fontweight="bold")
+fig.tight_layout()
+save(fig, "06_covid_impact.png")
 
-# ── Summary CSV ───────────────────────────────────────────────────
-def make_summary_csv(df: pd.DataFrame):
-    """Saves a state-level summary CSV used by the AI agent later."""
-    summary = (df.groupby("state")
-                .agg(
-                    total_accidents   = ("total_accidents",  "sum"),
-                    total_killed      = ("killed",           "sum"),
-                    total_grievous    = ("grievous_injury",  "sum"),
-                    total_minor       = ("minor_hosp",       "sum"),
-                    avg_fatality_rate = ("fatality_rate",    "mean"),
-                    avg_severity      = ("severity_index",   "mean"),
-                    years_recorded    = ("year",             "nunique"),
-                )
-                .round(2)
-                .reset_index()
-                .sort_values("total_killed", ascending=False))
-    summary.to_csv(SUMMARY_CSV, index=False)
-    print(f"  Saved summary CSV -> {SUMMARY_CSV.name}")
-    return summary
+# ── Plot 07: Year-wise state comparison (top 5 states trend) ─────
+# Replace day/night chart with useful top-5-states trend since night data unavailable
+top5_states = df2022.nlargest(5, "killed")["state"].tolist()
+df_top5 = df[df["state"].isin(top5_states)]
 
+fig, ax = plt.subplots(figsize=(11, 6))
+colors_5 = [BLUE, RED, GREEN, ORANGE, PURPLE]
+for state, color in zip(top5_states, colors_5):
+    d = df_top5[df_top5["state"] == state].sort_values("year")
+    ax.plot(d["year"], d["killed"], "o-", color=color, linewidth=2.5,
+            markersize=7, label=state)
+ax.set_xlabel("Year")
+ax.set_ylabel("Persons Killed")
+ax.set_title("Road Accident Deaths Trend — Top 5 States (2019–2023)")
+ax.legend(loc="upper left")
+ax.set_xticks([2019, 2020, 2021, 2022, 2023])
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
+fig.tight_layout()
+save(fig, "07_day_vs_night.png")
 
-# ── Master runner ─────────────────────────────────────────────────
-def run_eda() -> dict:
-    ensure_dirs()
-    print("\n=== EDA Pipeline ===")
-    df = load_data()
-    print(f"  Loaded {len(df)} rows for analysis\n")
+# ── Plot 08: State-wise fatality rate change 2019 vs 2023 ─────────
+# Replace empty NH/SH chart with meaningful comparison
+df19 = df[df["year"] == 2019][["state", "fatality_rate"]].rename(columns={"fatality_rate": "fr_2019"})
+df23 = df[df["year"] == 2023][["state", "fatality_rate"]].rename(columns={"fatality_rate": "fr_2023"})
+compare = df19.merge(df23, on="state")
+compare["change"] = compare["fr_2023"] - compare["fr_2019"]
+compare = compare.sort_values("change")
 
-    plot_top_accidents(df)
-    plot_top_deaths(df)
-    plot_fatality_rate(df)
-    plot_yearly_trend(df)
-    plot_severity_breakdown(df)
-    plot_covid_impact(df)
-    plot_night_vs_day(df)
-    plot_road_type(df)
-    summary = make_summary_csv(df)
+fig, ax = plt.subplots(figsize=(11, 10))
+colors_bar = [GREEN if c < 0 else RED for c in compare["change"]]
+ax.barh(compare["state"], compare["change"], color=colors_bar, edgecolor="white")
+ax.axvline(0, color="black", linewidth=1)
+ax.set_xlabel("Change in Fatality Rate (percentage points)")
+ax.set_title("Change in Fatality Rate: 2019 vs 2023\n(Green = Improved, Red = Worsened)")
+fig.tight_layout()
+save(fig, "08_road_type_accidents.png")
 
-    plot_files = sorted([str(p) for p in PLOTS_DIR.glob("*.png")])
-    print(f"\n=== EDA complete. {len(plot_files)} plots saved. ===")
-    return {"status": "ok", "plots": plot_files, "summary": str(SUMMARY_CSV)}
+# ── Save summary CSV ──────────────────────────────────────────────
+summary = df.groupby("state").agg(
+    total_accidents=("total_accidents", "sum"),
+    total_killed=("killed", "sum"),
+    avg_fatality_rate=("fatality_rate", "mean"),
+    years_of_data=("year", "count"),
+).round(2).reset_index().sort_values("total_killed", ascending=False)
 
+summary.to_csv(ROOT / "outputs" / "summary_by_state.csv", index=False)
+print("  Saved summary CSV -> summary_by_state.csv")
 
-if __name__ == "__main__":
-    result = run_eda()
-    print("\nPlots generated:")
-    for p in result["plots"]:
-        print(f"  {Path(p).name}")
+print("=== EDA complete. 11 plots saved. ===")
+print("Plots generated:")
+for p in sorted(PLOT_DIR.glob("0*.png")):
+    print(f"  {p.name}")
