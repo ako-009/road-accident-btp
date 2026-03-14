@@ -43,8 +43,8 @@ def api_post(endpoint, payload):
 
 # ── Sidebar ───────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## India Road Safety Dashboard")
-    st.markdown("**India Road Safety Analysis**")
+    st.markdown("## 🛣️ Road Safety India")
+    st.markdown("##### Accident Analysis & AI Decision Support")
     st.markdown("---")
     health = api_get("/health")
     if health.get("status") == "ok":
@@ -54,14 +54,19 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Data source:** iRAD / MoRTH")
     st.markdown("**Years covered:** 2019 – 2023")
+    st.markdown("**States covered:** 36")
     st.markdown("**Model:** Poisson Regression")
-    st.markdown("**AI:** Groq (Llama 3.3)")
+    st.markdown("**AI:** Groq (Llama 3.3 70B)")
+    st.markdown("**Database:** SQLite (5 tables)")
     st.markdown("**Framework:** 4E (Campbell Review)")
     st.markdown("---")
-    st.markdown("**Project:** BTP Road Safety")
+    st.markdown("**Student:** Abhishek Kumar Ojha")
+    st.markdown("**Project:** Road Accident Analysis System for India")
+    st.caption("Statistical Modelling, Black Spot Identification & AI-Powered Decision Support Using iRAD Data")
     st.markdown("**Institute:** IIT Kharagpur")
     st.markdown("---")
-    st.caption("Data sourced from official MoRTH Road Accidents in India publications.")
+    st.markdown("[GitHub Repository](https://github.com/ako-009/road-accident-btp)")
+    st.caption("Data: MoRTH Road Accidents in India 2019–2023")
 
 
 tab1, tab2, tab3, tab4 = st.tabs([
