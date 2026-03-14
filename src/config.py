@@ -41,6 +41,7 @@ POISSON_MODEL_FILE = MODELS_DIR / "poisson.pkl"
 
 # ── OpenAI settings ───────────────────────────────────────────
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o-mini")
 
 # ── Local embedding model (runs on your machine, free) ────────

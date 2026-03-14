@@ -516,7 +516,7 @@ with tab4:
                 unsafe_allow_html=True,
             )
             if entry.get("sources"):
-                relevant = [s for s in entry["sources"] if s["score"] > 0.55]
+                relevant = [s for s in entry["sources"] if s["score"] > 0.45]
                 with st.expander(f"Sources ({len(relevant)} relevant documents)"):
                     for j, src in enumerate(relevant, 1):
                         st.markdown(

@@ -97,11 +97,35 @@ def generate_local_answer(question: str, docs: list = None) -> str:
         "dadra & nagar haveli", "daman & diu",
     ]
 
-    matched_state = None
+    # Check for multiple states (comparison question)
+    matched_states = []
     for state in sorted(all_states, key=len, reverse=True):
         if state in q:
-            matched_state = state
-            break
+            matched_states.append(state)
+
+    # If two states found — comparison question
+    if len(matched_states) >= 2:
+        lines = ["Road Safety Comparison:"]
+        lines.append("")
+        for state in matched_states[:2]:
+            data = get_state_summary(state.title())
+            if data.get("status") == "ok":
+                lines.append(f"{data['state']}:")
+                lines.append(f"  Total accidents (2019-2023) : {data['total_accidents']:,}")
+                lines.append(f"  Total persons killed        : {data['total_killed']:,}")
+                lines.append(f"  Average fatality rate       : {data['avg_fatality_rate']}%")
+                lines.append(f"  Worst year                  : {data['worst_year']}")
+                lines.append("")
+        # Add verdict
+        d0 = get_state_summary(matched_states[0].title())
+        d1 = get_state_summary(matched_states[1].title())
+        if d0.get("status") == "ok" and d1.get("status") == "ok":
+            safer = matched_states[0] if float(d0["avg_fatality_rate"]) < float(d1["avg_fatality_rate"]) else matched_states[1]
+            lines.append(f"Verdict: {safer.title()} is safer by fatality rate.")
+        return "\n".join(lines)
+
+    # Single state match
+    matched_state = matched_states[0] if matched_states else None
 
     if matched_state:
         data = get_state_summary(matched_state.title())
@@ -257,31 +281,78 @@ def generate_local_answer(question: str, docs: list = None) -> str:
 
 def call_openai(system_prompt: str, user_message: str,
                 docs: list = None, original_question: str = "") -> str:
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-put-your-real-key-here":
-        return generate_local_answer(original_question or user_message, docs)
-    try:
-        from openai import OpenAI
-        client   = OpenAI(api_key=OPENAI_API_KEY)
-        response = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_message},
-            ],
-            max_tokens=600,
-            temperature=0.3,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return generate_local_answer(original_question or user_message, docs)
+    import os
+
+    # ── Try Groq first ────────────────────────────────────────────
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if groq_key and groq_key != "your_groq_key_here":
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                api_key=groq_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_message},
+                ],
+                max_tokens=600,
+                temperature=0.3,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Groq API error: {e}, falling back to local answer")
+            return generate_local_answer(original_question or user_message, docs)
+
+    # ── Try OpenAI if no Groq key ─────────────────────────────────
+    if OPENAI_API_KEY and OPENAI_API_KEY != "sk-put-your-real-key-here":
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_message},
+                ],
+                max_tokens=600,
+                temperature=0.3,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"OpenAI API error: {e}, falling back to local answer")
+            return generate_local_answer(original_question or user_message, docs)
+
+    # ── Local fallback ────────────────────────────────────────────
+    return generate_local_answer(original_question or user_message, docs)
 
 
 SYSTEM_PROMPT = """You are an expert AI assistant for Indian road accident analysis.
-You help researchers, policymakers, and students understand road safety data.
-Answer ONLY based on the retrieved context documents provided.
-Always cite specific numbers when available.
-Recommend interventions from the 4E framework: Engineering, Enforcement, Education, Emergency.
-Be concise but thorough - aim for 3-5 sentences.
+You have access to real iRAD (Integrated Road Accident Database) data from MoRTH covering all 36 Indian states from 2019 to 2023.
+
+Key facts you know:
+- National total 2023: 4,74,285 accidents, 1,71,923 deaths, 39.5% avg fatality rate
+- Uttar Pradesh: highest deaths (23,652 in 2023), fatality rate 53.1%
+- Tamil Nadu: most accidents (67,213 in 2023), fatality rate 27.3%
+- Bihar: highest fatality rate (80.6% in 2023) — emergency response is the critical gap
+- Mizoram: 85% fatality rate — highest in India
+- COVID impact: accidents dropped 18.6% in 2020, fully recovered by 2023
+- Night accidents: 42% of all accidents occur between 18:00 and 06:00 hrs
+- Black spots: UP (Critical), Bihar/Punjab/Jharkhand/Mizoram/Meghalaya (High risk)
+- 4E Framework: Engineering (20-40% reduction), Enforcement (10-20%), Education (5-15%), Emergency (15-20%)
+- Poisson model: MAE=6,203, RMSE=9,676, MAPE=126.8%
+
+Rules:
+1. Use the retrieved context documents AND your built-in knowledge above
+2. For comparison questions, compare both entities clearly
+3. For intervention questions, give specific actionable recommendations
+4. For trend questions, cite actual year-by-year numbers
+5. Always give a direct answer first, then supporting data
+6. Be conversational but data-driven
+7. If asked about a specific state not in context, use national averages as reference
+8. Keep answers under 200 words but complete
 """
 
 
