@@ -41,9 +41,9 @@ def api_post(endpoint, payload):
         return {"status": "error", "message": str(e)}
 
 
-# Sidebar
+# ── Sidebar ───────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## Road Accident BTP")
+    st.markdown("## India Road Safety Dashboard")
     st.markdown("**India Road Safety Analysis**")
     st.markdown("---")
     health = api_get("/health")
@@ -65,7 +65,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 
-# TAB 1: OVERVIEW
+# ── TAB 1: OVERVIEW ───────────────────────────────────────────────
 with tab1:
     st.markdown("## National Road Accident Overview")
     st.markdown(
@@ -79,19 +79,21 @@ with tab1:
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total Accidents",   f"{totals['total_accidents']:,}")
         c2.metric("Total Deaths",      f"{totals['total_killed']:,}")
-        c3.metric("Grievous Injuries", f"{totals['total_grievous']:,}")
+        c3.metric("Grievous Injuries", f"{totals['total_grievous']:,}",
+                  help="2023 data — breakdown available from 2023 onwards")
         c4.metric("Avg Fatality Rate", f"{totals['avg_fatality_rate']:.1f}%")
         c5, c6, c7, c8 = st.columns(4)
-        c5.metric("States Covered", totals["states_covered"])
-        c6.metric("Minor Injuries", f"{totals['total_minor']:,}")
+        c5.metric("States Covered", int(totals["states_covered"]))
+        c6.metric("Minor Injuries", f"{totals['total_minor']:,}",
+                  help="Persons with minor injuries in road accidents (2023)")
         c7.metric("Years of Data",  len(totals.get("years_in_data", [])))
         c8.metric("Data Period",    f"2019 - {year}")
     else:
         st.warning("Could not load totals. Make sure the API is running.")
 
     st.markdown("---")
-    st.markdown("### Top 10 States by Deaths (2022)")
-    top = api_get("/top-states", params={"by": "killed", "year": 2022, "n": 10})
+    st.markdown("### Top 10 States by Deaths (2023)")
+    top = api_get("/top-states", params={"by": "killed", "year": 2023, "n": 10})
     if top.get("status") == "ok":
         df_top = pd.DataFrame(top["top_states"])
         df_top.columns = [
@@ -130,7 +132,7 @@ Evidence shows combining all 4Es reduces fatalities by 30-50%.
         """)
 
 
-# TAB 2: EDA PLOTS
+# ── TAB 2: EDA PLOTS ──────────────────────────────────────────────
 with tab2:
     st.markdown("## Exploratory Data Analysis")
     st.markdown("All charts generated from the cleaned iRAD dataset.")
@@ -148,10 +150,10 @@ with tab2:
             "02_top_deaths_by_state.png":    "Top 10 states by road accident deaths (2022).",
             "03_fatality_rate_by_state.png": "States with highest fatality rate. Red line = national average.",
             "04_yearly_national_trend.png":  "Year-over-year national trend 2019-2023. COVID dip in 2020.",
-            "05_severity_breakdown.png":     "Accident severity breakdown for top 10 states.",
+            "05_severity_breakdown.png":     "Accident severity breakdown for top 10 states (2023).",
             "06_covid_impact.png":           "COVID-19 impact. 2020 shows sharp drop due to lockdowns.",
-            "07_day_vs_night.png":           "Day vs night accidents. Night accidents are more deadly.",
-            "08_road_type_accidents.png":    "National Highway vs State Highway accidents.",
+            "07_day_vs_night.png":           "Day vs Night accidents — Top 10 states (2022). Night = 18:00 to 06:00 hrs.",
+            "08_road_type_accidents.png":    "Change in fatality rate per state: 2019 vs 2023. Green = improved, Red = worsened.",
             "09_actual_vs_predicted.png":    "Poisson model: actual vs predicted. Points near diagonal = good fit.",
             "10_feature_importance.png":     "Model coefficients showing which features influence accident counts.",
             "11_blackspot_risk_map.png":     "Black spot risk map: Critical, High, Medium, Low risk states.",
@@ -168,7 +170,7 @@ with tab2:
                         st.markdown("---")
 
 
-# TAB 3: ANALYSIS
+# ── TAB 3: ANALYSIS ───────────────────────────────────────────────
 with tab3:
     st.markdown("## Deep Analysis")
     sec1, sec2, sec3 = st.tabs(["Black Spots", "Yearly Trend", "Model Metrics"])
@@ -188,11 +190,11 @@ with tab3:
             st.dataframe(
                 df_bs[["state", "total_accidents", "killed",
                         "fatality_rate", "risk_level"]].rename(columns={
-                    "state": "State",
+                    "state":         "State",
                     "total_accidents": "Accidents",
-                    "killed": "Deaths",
+                    "killed":        "Deaths",
                     "fatality_rate": "Fatality Rate (%)",
-                    "risk_level": "Risk Level",
+                    "risk_level":    "Risk Level",
                 }),
                 use_container_width=True,
             )
@@ -258,7 +260,7 @@ with tab3:
             st.warning("Run python src/train_poisson.py first.")
 
 
-# TAB 4: AI CHAT
+# ── TAB 4: AI CHAT ────────────────────────────────────────────────
 with tab4:
     st.markdown("## AI Road Safety Assistant")
     st.markdown(
