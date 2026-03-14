@@ -136,7 +136,17 @@ ax.axvline(0,color="black",linewidth=1); ax.set_xlabel("Change in Fatality Rate 
 ax.set_title("Change in Fatality Rate: 2019 vs 2023\n(Green=Improved, Red=Worsened)")
 fig.tight_layout(); save(fig,"08_road_type_accidents.png")
 
-summary=df.groupby("state").agg(total_accidents=("total_accidents","sum"),total_killed=("killed","sum"),avg_fatality_rate=("fatality_rate","mean"),years_of_data=("year","count")).round(2).reset_index().sort_values("total_killed",ascending=False)
+summary=df.groupby("state").agg(
+    total_accidents=("total_accidents","sum"),
+    total_killed=("killed","sum"),
+    avg_fatality_rate=("fatality_rate","mean"),
+    years_of_data=("year","count"),
+    total_grievous=("grievous_injury","sum"),
+    total_minor=("minor_injured","sum"),
+    avg_severity=("fatality_rate", lambda x: round(x.mean()/100, 4)),
+    night_share=("night_share","mean"),
+    nh_share=("nh_share","mean"),
+).round(2).reset_index().sort_values("total_killed",ascending=False)
 summary.to_csv(ROOT/"outputs"/"summary_by_state.csv",index=False)
 print("  Saved summary CSV -> summary_by_state.csv")
 print("=== EDA complete. ===")

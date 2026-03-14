@@ -149,11 +149,11 @@ def build_documents() -> list[dict]:
                     f"State Summary for {row['state']}: "
                     f"Total accidents recorded: {int(row['total_accidents']):,}. "
                     f"Total persons killed: {int(row['total_killed']):,}. "
-                    f"Total grievous injuries: {int(row['total_grievous']):,}. "
+                    f"Total grievous injuries: {int(row.get('grievous_injury', row.get('total_grievous', 0))):,}. "
                     f"Average fatality rate: {row['avg_fatality_rate']:.2f} deaths "
                     f"per 100 accidents. "
-                    f"Average severity index: {row['avg_severity']:.4f}. "
-                    f"Data available for {int(row['years_recorded'])} years."
+                    f"Average severity index: {row.get('avg_severity', row.get('fatality_rate', 0)):.4f}. "
+                    f"Data available for {int(row.get('years_recorded', row.get('years_of_data', 5)))} years."
                 ),
             })
         print(f"  Added {len(summary)} state summary documents.")
