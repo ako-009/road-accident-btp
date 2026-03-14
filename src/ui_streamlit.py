@@ -55,6 +55,7 @@ with st.sidebar:
     st.markdown("**Data source:** iRAD / MoRTH")
     st.markdown("**Years covered:** 2019 – 2023")
     st.markdown("**Model:** Poisson Regression")
+    st.markdown("**AI:** Groq (Llama 3.3)")
     st.markdown("**Framework:** 4E (Campbell Review)")
     st.markdown("---")
     st.markdown("**Project:** BTP Road Safety")
@@ -450,7 +451,7 @@ with tab4:
     st.markdown("## AI Road Safety Assistant")
     st.markdown(
         "Ask anything about road accidents in India. "
-        "The assistant searches the iRAD knowledge base and answers based on real MoRTH data."
+        "The assistant searches the iRAD knowledge base and answers using Groq AI (Llama 3.3). Powered by real MoRTH data."
     )
 
     prompts_path = Path(__file__).parent / "canned_prompts.json"

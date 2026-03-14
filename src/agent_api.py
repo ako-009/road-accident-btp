@@ -428,3 +428,9 @@ def trend():
 @app.get("/metrics")
 def model_metrics():
     return get_model_metrics()
+
+@app.get("/database")
+def database_stats():
+    """Returns database statistics."""
+    from src.tools import get_database_stats
+    return get_database_stats()
