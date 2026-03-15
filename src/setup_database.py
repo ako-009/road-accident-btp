@@ -247,23 +247,25 @@ def load_metrics(conn):
     cursor.execute("DELETE FROM model_metrics")
 
     descriptions = {
-        "mae":       "Mean Absolute Error — average prediction error per state per year",
-        "rmse":      "Root Mean Square Error — penalises large errors more",
-        "mape_pct":  "Mean Absolute Percentage Error — relative prediction error",
-        "train_rows":"Number of rows used for training",
-        "test_rows": "Number of rows used for testing",
+        "mae":        "Mean Absolute Error — average prediction error per state per year",
+        "rmse":       "Root Mean Square Error — penalises large errors more",
+        "mape_pct":   "Mean Absolute Percentage Error — relative prediction error",
+        "train_rows": "Number of rows used for training",
+        "test_rows":  "Number of rows used for testing",
     }
 
-    for _, row in df.iterrows():
-        name = str(row.get("metric", row.get("metric_name", "")))
-        val  = float(row.get("value", row.get("metric_value", 0)))
+    metric_cols = [c for c in descriptions.keys() if c in df.columns]
+    row = df.iloc[0]  # single-row wide format
+
+    for name in metric_cols:
+        val = float(row[name])
         cursor.execute("""
             INSERT OR REPLACE INTO model_metrics (metric_name, metric_value, description)
             VALUES (?,?,?)
         """, (name, val, descriptions.get(name, "")))
 
     conn.commit()
-    print(f"  Loaded {len(df)} rows into model_metrics table.")
+    print(f"  Loaded {len(metric_cols)} rows into model_metrics table.")
 
 
 def load_predictions(conn):
